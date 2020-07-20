@@ -93,7 +93,7 @@ BladeRFSource::BladeRFSource(const char *serial) :
         }
         else
         {
-            if ((status = bladerf_sync_config(m_dev, BLADERF_MODULE_RX, BLADERF_FORMAT_SC16_Q11, 64, 8192, 32, 10000)) < 0)
+            if ((status = bladerf_sync_config(m_dev, BLADERF_RX_X1, BLADERF_FORMAT_SC16_Q11, 64, 8192, 32, 10000)) < 0)
             {
                 std::ostringstream err_ostr;
                 err_ostr << "bladerf_sync_config failed with return code " << status;
