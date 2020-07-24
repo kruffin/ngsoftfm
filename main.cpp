@@ -122,6 +122,7 @@ void usage()
             "  -T filename    Write pulse-per-second timestamps\n"
             "                 use filename '-' to write to stdout\n"
             "  -b seconds     Set audio buffer size in seconds\n"
+            "  -q             Squelches spurious ouput.\n"
             "\n"
             "Configuration options for RTL-SDR devices\n"
             "  freq=<int>     Frequency of radio station in Hz (default 100000000)\n"
@@ -276,6 +277,7 @@ int main(int argc, char **argv)
     int     devidx  = 0;
     int     pcmrate = 48000;
     bool    stereo  = true;
+    bool    quiet   = false;
     enum OutputMode { MODE_RAW, MODE_WAV, MODE_ALSA };
     OutputMode outmode = MODE_ALSA;
     std::string  filename;
@@ -302,11 +304,12 @@ int main(int argc, char **argv)
         { "play",       2, NULL, 'P' },
         { "pps",        1, NULL, 'T' },
         { "buffer",     1, NULL, 'b' },
+        { "quiet",      0, NULL, 'q' },
         { NULL,         0, NULL, 0 } };
 
     int c, longindex;
     while ((c = getopt_long(argc, argv,
-                            "t:c:d:r:MR:W:P::T:b:",
+                            "t:c:d:r:MR:W:P::T:b:q",
                             longopts, &longindex)) >= 0) {
         switch (c) {
             case 't':
@@ -347,6 +350,9 @@ int main(int argc, char **argv)
                 if (!parse_dbl(optarg, bufsecs) || bufsecs < 0) {
                     badarg("-b");
                 }
+                break;
+            case 'q':
+                quiet = true;
                 break;
             default:
                 usage();
@@ -575,17 +581,19 @@ int main(int argc, char **argv)
         ppm_average.feed(((fm.get_tuning_offset() + delta_if) / tuner_freq) * -1.0e6); // the minus factor is to show the ppm correction to make and not the one made
 
         // Show statistics.
-        fprintf(stderr,
-                "\rblk=%6d  freq=%10.6fMHz  ppm=%+6.2f  IF=%+5.1fdB  BB=%+5.1fdB  audio=%+5.1fdB ",
-                block,
-                (tuner_freq + fm.get_tuning_offset()) * 1.0e-6,
-                ppm_average.average(),
-                //((fm.get_tuning_offset() + delta_if) / tuner_freq) * 1.0e6,
-                20*log10(fm.get_if_level()),
-                20*log10(fm.get_baseband_level()) + 3.01,
-                20*log10(audio_level) + 3.01);
+        if (!quiet) {
+            fprintf(stderr,
+                    "\rblk=%6d  freq=%10.6fMHz  ppm=%+6.2f  IF=%+5.1fdB  BB=%+5.1fdB  audio=%+5.1fdB ",
+                    block,
+                    (tuner_freq + fm.get_tuning_offset()) * 1.0e-6,
+                    ppm_average.average(),
+                    //((fm.get_tuning_offset() + delta_if) / tuner_freq) * 1.0e6,
+                    20*log10(fm.get_if_level()),
+                    20*log10(fm.get_baseband_level()) + 3.01,
+                    20*log10(audio_level) + 3.01);
+        }
 
-        if (outputbuf_samples > 0)
+        if (outputbuf_samples > 0 && !quiet)
         {
             unsigned int nchannel = stereo ? 2 : 1;
             std::size_t buflen = output_buffer.queued_samples();
